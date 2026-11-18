@@ -1,12 +1,9 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
+import Quickshell
 import qs.PluginKit.Singletons
 
-// content/Panel.qml is the bar panel: when this plugin is on the bar and the
-// manifest declares entryPoints.panel, the host renders this file under the
-// plugin's glyph in the shared panel surface (Escape or an outside click closes
-// it, one panel open at a time). The host sets pluginApi, density ("full"), s,
-// widthBudget (from manifest panel.width) and active; report implicitHeight and
-// the host sizes the card to it.
 Item {
     id: root
 
@@ -17,7 +14,10 @@ Item {
     property bool active: false
 
     readonly property var service: pluginApi ? pluginApi.mainInstance : null
-    readonly property int count: service ? service.count : 0
+    readonly property int cpu: service ? service.cpuPercent : 0
+    readonly property int mem: service ? service.memPercent : 0
+    readonly property int temp: service ? service.cpuTemp : 0
+    readonly property int gpu: service ? service.gpuPercent : 0
 
     implicitWidth: root.widthBudget
     implicitHeight: col.implicitHeight + 24 * root.s
@@ -29,42 +29,114 @@ Item {
         width: root.width - 24 * root.s
         spacing: 12 * root.s
 
-        Text {
-            text: "Sysmon Glance"
-            color: Theme.bright
-            font.family: Theme.display
-            font.pixelSize: 16 * root.s
+        // Header
+        Row {
+            width: parent.width
+            Text {
+                text: "SYSTEM VITALS"
+                color: Theme.bright
+                font.family: Theme.display
+                font.pixelSize: 15 * root.s
+                font.weight: Font.Bold
+            }
         }
 
-        Text {
-            text: "Ticks: " + root.count
-            color: Theme.dim
-            font.family: Theme.font
-            font.pixelSize: 13 * root.s
+        // CPU Metric
+        Column {
+            width: parent.width
+            spacing: 4 * root.s
+            Row {
+                width: parent.width
+                Text { text: "CPU LOAD"; color: Theme.dim; font.family: Theme.font; font.pixelSize: 11 * root.s }
+                Item { width: 1; height: 1 }
+                Text { text: root.cpu + "%" + (root.temp > 0 ? (" (" + root.temp + "°C)") : ""); color: Theme.bright; font.family: Theme.font; font.pixelSize: 11 * root.s; x: col.width - implicitWidth }
+            }
+            Rectangle {
+                width: parent.width
+                height: 6 * root.s
+                radius: 3 * root.s
+                color: Theme.hair
+                Rectangle {
+                    width: Math.min(parent.width, parent.width * (root.cpu / 100.0))
+                    height: parent.height
+                    radius: 3 * root.s
+                    color: Theme.bright
+                }
+            }
         }
 
-        // An outlined button: a pressed state is a brighter fill, never a hue.
+        // Memory Metric
+        Column {
+            width: parent.width
+            spacing: 4 * root.s
+            Row {
+                width: parent.width
+                Text { text: "MEMORY (RAM)"; color: Theme.dim; font.family: Theme.font; font.pixelSize: 11 * root.s }
+                Text { text: root.mem + "%"; color: Theme.bright; font.family: Theme.font; font.pixelSize: 11 * root.s; x: col.width - implicitWidth }
+            }
+            Rectangle {
+                width: parent.width
+                height: 6 * root.s
+                radius: 3 * root.s
+                color: Theme.hair
+                Rectangle {
+                    width: Math.min(parent.width, parent.width * (root.mem / 100.0))
+                    height: parent.height
+                    radius: 3 * root.s
+                    color: Theme.bright
+                }
+            }
+        }
+
+        // GPU Metric (if available)
+        Column {
+            width: parent.width
+            spacing: 4 * root.s
+            Row {
+                width: parent.width
+                Text { text: "GPU UTILIZATION"; color: Theme.dim; font.family: Theme.font; font.pixelSize: 11 * root.s }
+                Text { text: root.gpu + "%"; color: Theme.bright; font.family: Theme.font; font.pixelSize: 11 * root.s; x: col.width - implicitWidth }
+            }
+            Rectangle {
+                width: parent.width
+                height: 6 * root.s
+                radius: 3 * root.s
+                color: Theme.hair
+                Rectangle {
+                    width: Math.min(parent.width, parent.width * (root.gpu / 100.0))
+                    height: parent.height
+                    radius: 3 * root.s
+                    color: Theme.bright
+                }
+            }
+        }
+
+        // Launch full sysmon action button
         Rectangle {
-            width: resetLabel.implicitWidth + 24 * root.s
-            height: resetLabel.implicitHeight + 12 * root.s
+            width: parent.width
+            height: 28 * root.s
             radius: Theme.radius
-            color: resetArea.pressed ? Theme.hair : "transparent"
+            color: openArea.pressed ? Theme.hair : "transparent"
             border.width: 1
             border.color: Theme.lineStrong
 
             Text {
-                id: resetLabel
                 anchors.centerIn: parent
-                text: "RESET"
+                text: "OPEN RESOURCE MONITOR"
                 color: Theme.bright
                 font.family: Theme.font
-                font.pixelSize: 12 * root.s
+                font.pixelSize: 11 * root.s
+                font.weight: Font.Medium
             }
 
             MouseArea {
-                id: resetArea
+                id: openArea
                 anchors.fill: parent
-                onClicked: if (root.service) root.service.reset()
+                onClicked: {
+                    Quickshell.execDetached(["asura-sysmon", "ui"]);
+                    if (root.pluginApi)
+                        root.pluginApi.closePanel();
+                }
             }
         }
     }

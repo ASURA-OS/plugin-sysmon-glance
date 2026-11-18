@@ -1,13 +1,14 @@
 {
   "id": "sysmon-glance",
   "name": "Sysmon Glance",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "author": "ASURA OS Core Team <core@asura-os.org>",
-  "description": "Sysmon Glance is a Asura shell plugin.",
-  "license": "MIT",
+  "description": "Real-time CPU, RAM, GPU, and thermal telemetry HUD for the bar and desktop.",
+  "license": "GPL-3.0",
   "official": false,
   "hosts": [
-    "topbarGlyph"
+    "topbarGlyph",
+    "desktopWidget"
   ],
   "entryPoints": {
     "main": "service/Main.qml",
@@ -29,16 +30,27 @@
     "label": "Sysmon Glance"
   },
   "dependencies": {
-    "commands": []
+    "commands": [
+      "asura-sysmon"
+    ]
   },
   "metadata": {
     "settings": [
       {
-        "key": "showCount",
+        "key": "showTemp",
         "type": "toggle",
-        "label": "Show the tick count",
-        "group": "Sysmon Glance",
+        "label": "Display CPU Temperature",
+        "group": "Metrics",
         "default": true
+      },
+      {
+        "key": "pollIntervalSec",
+        "type": "int",
+        "label": "Poll Interval (seconds)",
+        "group": "Metrics",
+        "min": 1,
+        "max": 10,
+        "default": 2
       }
     ]
   }

@@ -1,11 +1,6 @@
 import QtQuick
 import qs.PluginKit.Singletons
 
-// content/Widget.qml is the one view the host mounts (on the bar, this is the
-// glyph). It reads live state from the service (pluginApi.mainInstance) and its
-// only click action toggles the plugin's panel: a widget click NEVER mutates
-// anything. The host sets pluginApi, density, s, widthBudget and active; read
-// them, never assign.
 Item {
     id: root
 
@@ -17,13 +12,13 @@ Item {
     property real widthBudget: 0
 
     readonly property var service: pluginApi ? pluginApi.mainInstance : null
-    readonly property int count: service ? service.count : 0
+    readonly property int cpu: service ? service.cpuPercent : 0
+    readonly property int mem: service ? service.memPercent : 0
+    readonly property int temp: service ? service.cpuTemp : 0
 
-    // A setting is read behind its default: a plugin enabled before the setting
-    // existed has no value for it, and undefined must not decide the layout.
-    readonly property bool showCount: {
+    readonly property bool showTemp: {
         const settings = pluginApi ? pluginApi.pluginSettings : null;
-        return settings && settings.showCount !== undefined ? settings.showCount : true;
+        return settings && settings.showTemp !== undefined ? settings.showTemp : true;
     }
 
     implicitWidth: row.implicitWidth
@@ -34,8 +29,7 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         spacing: 6 * root.s
 
-        // The plugin's mark, a diamond drawn from a square so it needs no font.
-        // Ink, not colour: the active state is brighter, the idle state dimmer.
+        // Pulse Mark
         Item {
             anchors.verticalCenter: parent.verticalCenter
             width: 12 * root.s
@@ -46,18 +40,18 @@ Item {
                 width: 7 * root.s
                 height: 7 * root.s
                 rotation: 45
-                color: root.active ? Theme.accent : Theme.dim
+                color: root.active ? Theme.accent : Theme.bright
             }
         }
 
-        // The label beside the mark, elided to the width the host allows.
+        // Metrics readout
         Text {
-            visible: root.showCount
             anchors.verticalCenter: parent.verticalCenter
-            text: root.count
+            text: "CPU " + root.cpu + "%" + "  RAM " + root.mem + "%" + (root.showTemp && root.temp > 0 ? ("  " + root.temp + "°C") : "")
             color: Theme.bright
             font.family: Theme.font
-            font.pixelSize: 13 * root.s
+            font.pixelSize: 12 * root.s
+            font.weight: Font.Medium
             elide: Text.ElideRight
             width: root.widthBudget > 0 ? Math.min(implicitWidth, root.widthBudget) : implicitWidth
         }

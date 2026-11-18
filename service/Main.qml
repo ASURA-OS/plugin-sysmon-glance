@@ -1,32 +1,61 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import Quickshell
+import Quickshell.Io
 
-// service/Main.qml is the plugin's logic: no UI. The host loads one instance and
-// hands it to every view as pluginApi.mainInstance, so the widget and the panel
-// read the same live state. Replace the demo counter below with your plugin's
-// real state and the singletons or bin/ scripts that feed it.
 Item {
     id: svc
 
-    // Set by the host after this loads; the plugin's settings live behind it.
-    // Read settings through pluginApi.pluginSettings, always behind a default,
-    // and write them only through pluginApi.saveSetting(key, value) (R5).
     property var pluginApi
     readonly property var settings: pluginApi ? pluginApi.pluginSettings : null
 
-    // Demo state: a counter that ticks once a second.
-    property int count: 0
+    property int cpuPercent: 0
+    property int memPercent: 0
+    property int cpuTemp: 0
+    property int gpuPercent: 0
 
-    // The panel's RESET button calls this.
-    function reset() {
-        svc.count = 0;
+    property string _buffer: ""
+
+    Process {
+        id: statsProc
+        command: ["asura-sysmon", "stats", "--interval", "100"]
+        stdout: SplitParser {
+            onRead: (line) => {
+                svc._buffer += line;
+            }
+        }
+        onExited: (code) => {
+            if (code === 0 && svc._buffer.length > 0) {
+                try {
+                    const data = JSON.parse(svc._buffer);
+                    if (data.cpu) {
+                        svc.cpuPercent = Math.round(data.cpu.usagePercent || 0);
+                        svc.cpuTemp = Math.round(data.cpu.tempC || 0);
+                    }
+                    if (data.memory) {
+                        svc.memPercent = Math.round(data.memory.usedPercent || 0);
+                    }
+                    if (data.gpus && data.gpus.length > 0) {
+                        svc.gpuPercent = Math.round(data.gpus[0].utilizationPct || 0);
+                    }
+                } catch (e) {
+                }
+            }
+            svc._buffer = "";
+        }
     }
 
     Timer {
-        interval: 1000
+        interval: 2000
         running: true
         repeat: true
-        onTriggered: svc.count += 1
+        triggeredOnStart: true
+        onTriggered: {
+            if (!statsProc.running) {
+                svc._buffer = "";
+                statsProc.running = true;
+            }
+        }
     }
 }
